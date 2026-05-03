@@ -146,6 +146,11 @@
             font-weight: bold;
             cursor: pointer;
         }
+        /* 赛中删除按钮禁用样式 */
+        .delete-student-btn.disabled-delete {
+            opacity: 0.4;
+            pointer-events: none;
+        }
 
         .battle-wrapper {
             display: flex;
@@ -545,16 +550,23 @@
     const countdownOverlay = document.getElementById('countdownOverlay');
     const gradeBtns = document.querySelectorAll('.grade-btn');
     
-    // 控制所有操作按钮禁用
+    // 控制所有管理按钮、删除按钮禁用/启用
     function setAllGameControlsDisabled(disabled) {
+        // 顶部管理按钮
         const btns = controlPanel.querySelectorAll('button, .file-label');
         btns.forEach(btn => { if (disabled) { btn.classList.add('disabled-ctrl'); btn.style.pointerEvents = 'none'; } else { btn.classList.remove('disabled-ctrl'); btn.style.pointerEvents = ''; } });
         setTimeInput.disabled = disabled;
         if (disabled) setTimeInput.classList.add('disabled-ctrl');
         else setTimeInput.classList.remove('disabled-ctrl');
+        // 选人、随机、年级按钮
         document.querySelectorAll('.pick-student-btn, .random-icon, .grade-btn').forEach(btn => {
             if (disabled) { btn.classList.add('disabled-ctrl'); btn.style.pointerEvents = 'none'; }
             else { btn.classList.remove('disabled-ctrl'); btn.style.pointerEvents = ''; }
+        });
+        // 荣耀榜删除按钮
+        document.querySelectorAll('.delete-student-btn').forEach(btn => {
+            if (disabled) btn.classList.add('disabled-delete');
+            else btn.classList.remove('disabled-delete');
         });
     }
     
@@ -570,7 +582,6 @@
             readyStatus1.innerText = "⚪ 未准备";
             readyBtn1.innerText = "👊 我已准备好";
         }
-        // 确保准备按钮状态根据当前选手是否有效来更新
         updateReadyButtonsState();
     }
     
@@ -794,12 +805,11 @@
         
         document.querySelectorAll('.player-card').forEach(c => c.classList.add('disabled-click'));
         
-        // ====== 修复核心：清空双方姓名并强制重置准备状态 ======
+        // 清空双方姓名并强制重置准备状态
         leftName = "待选";
         rightName = "待选";
         p0NameSpan.innerText = leftName;
         p1NameSpan.innerText = rightName;
-        // 强制重置准备标志和按钮文字
         forceResetReadyState();
         
         for (let i = 0; i < 2; i++) {
@@ -809,11 +819,9 @@
             answerStatuses[i].innerHTML = "";
         }
         setAllGameControlsDisabled(false);
-        // 额外确保冷却倒计时标记清除
         countdownActive = false;
         if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
         countdownOverlay.style.display = "none";
-        // 清除可能残留的惩罚状态
         for (let i = 0; i < 2; i++) {
             if (penaltyTimers[i]) clearTimeout(penaltyTimers[i]);
             penaltyActive[i] = false;

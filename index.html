@@ -143,6 +143,11 @@
             background: #FFF2DF;
             padding: 4px 15px;
             border-radius: 50px;
+            transition: all 0.2s;
+        }
+        .single-settings.disabled-settings {
+            background: #d4cfc2;
+            opacity: 0.7;
         }
         .single-settings label { font-weight: bold; font-size: 0.8rem; color: #5d3a1a; }
         .single-settings input {
@@ -153,6 +158,10 @@
             border-radius: 30px;
             padding: 4px;
             font-weight: bold;
+        }
+        .single-settings.disabled-settings input {
+            background: #e0dbce;
+            color: #8a8a7a;
         }
 
         /* 双人/单人共用排行榜区 */
@@ -221,6 +230,10 @@
         .single-mode .player-card:last-child .player-name-big {
             background: #c8d6c5;
             color: #5d6e5a;
+        }
+        .single-mode .player-card:last-child .select-controls,
+        .single-mode .player-card:last-child .ready-btn {
+            display: none;
         }
         .player-card {
             flex: 2;
@@ -483,7 +496,7 @@
         </div>
     </div>
 
-    <!-- 年级 + 单人练习设置 -->
+    <!-- 年级 + 单人练习设置区 -->
     <div class="settings-area">
         <div class="grade-section">
             <span class="grade-title">📚 难度：</span>
@@ -644,6 +657,20 @@
     const singleQuestionCountInput = document.getElementById('singleQuestionCount');
     const singleTimeLimitInput = document.getElementById('singleTimeLimit');
     
+    // 更新单人设置区域的禁用状态（根据游戏模式）
+    function updateSingleSettingsDisabled() {
+        const isDoubleMode = (gameMode === 'double');
+        if (isDoubleMode) {
+            singleSettingsDiv.classList.add('disabled-settings');
+            singleQuestionCountInput.disabled = true;
+            singleTimeLimitInput.disabled = true;
+        } else {
+            singleSettingsDiv.classList.remove('disabled-settings');
+            singleQuestionCountInput.disabled = false;
+            singleTimeLimitInput.disabled = false;
+        }
+    }
+    
     function setAllGameControlsDisabled(disabled) {
         const btns = document.querySelectorAll('#controlPanel button, #controlPanel .file-label, .pick-student-btn, .random-icon, .grade-btn');
         btns.forEach(btn => {
@@ -651,8 +678,11 @@
             else { btn.classList.remove('disabled-ctrl'); btn.style.pointerEvents = ''; }
         });
         setTimeInput.disabled = disabled;
-        singleQuestionCountInput.disabled = disabled;
-        singleTimeLimitInput.disabled = disabled;
+        // 注意：单人设置输入框的禁用状态由模式独立控制，不受比赛禁用影响
+        if (gameMode === 'single') {
+            singleQuestionCountInput.disabled = disabled;
+            singleTimeLimitInput.disabled = disabled;
+        }
         document.querySelectorAll('.delete-student-btn').forEach(btn => {
             if (disabled) btn.classList.add('disabled-delete');
             else btn.classList.remove('disabled-delete');
@@ -850,7 +880,6 @@
         gameActive = false; singlePracticeActive = false;
         if (timerInterval) clearInterval(timerInterval);
         let message = completed ? `🎉 练习完成！ 得分：${singleCurrentScore} 分` : `⏰ 时间到！ 得分：${singleCurrentScore} 分`;
-        // 保存练习记录
         if (leftName !== "待选") {
             let existing = singlePracticeData.find(d => d.name === leftName);
             if (!existing || singleCurrentScore > existing.bestScore) {
@@ -929,17 +958,16 @@
         if (gameActive) { feedbackDiv.innerHTML = "请先结束当前对局再切换模式"; return; }
         gameMode = mode;
         modeBtns.forEach(btn => { if (btn.getAttribute('data-mode') === mode) btn.classList.add('active'); else btn.classList.remove('active'); });
+        updateSingleSettingsDisabled();
         if (mode === 'single') {
             document.querySelector('.game-container').classList.add('single-mode');
             p1NameSpan.innerText = "📖 练习模式";
             readyBtn1.classList.add('disabled-btn');
-            singleSettingsDiv.style.display = "flex";
             rankTitleSpan.innerHTML = "🏆 练习荣誉榜 (最高分) 🏆";
         } else {
             document.querySelector('.game-container').classList.remove('single-mode');
             p1NameSpan.innerText = "待选";
             readyBtn1.classList.remove('disabled-btn');
-            singleSettingsDiv.style.display = "flex";
             rankTitleSpan.innerHTML = "🏆 荣耀榜 (胜+1 / 负+0.1) 🏆";
         }
         forceResetReadyState();
@@ -1017,6 +1045,7 @@
         bindEvents();
         setAllGameControlsDisabled(false);
         enableReadyButtons();
+        updateSingleSettingsDisabled();
         switchMode('double');
         const initTime=parseInt(setTimeInput.value);
         if(!isNaN(initTime)) timerDisplaySpan.innerText=initTime;

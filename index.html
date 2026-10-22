@@ -164,8 +164,30 @@
         .file-label { background: #FFB347; }
         .danger-btn { background: #d9534f; }
         .reset-group-btn { background: #9b59b6; }
+        .fullscreen-btn {
+            background: #4682B4;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            cursor: pointer;
+            touch-action: none;
+            transition: 0.05s linear;
+        }
+        .fullscreen-btn:active { transform: scale(0.96); background: #3a6d99; }
         input[type="file"] { display: none; }
         .disabled-ctrl { opacity: 0.5; pointer-events: none; filter: grayscale(0.1); }
+        .question-hidden { display: none !important; }
+
+        /* 多点触控加固（适配希沃一体机）：可交互控件禁止浏览器手势接管（捏合/滚动/双击缩放），
+           多人同时点按互不取消、互不误触；触摸按下立即响应，不等 click（希沃驱动下 click 易丢失或延迟） */
+        .numpad, .num-btn, .action-btn, .ready-btn, .pick-student-btn, .random-icon,
+        .mode-btn, .pause-btn, .data-btn, .file-label, .student-option, .uniform-btn,
+        .modal-close, .delete-student-btn {
+            touch-action: none;
+        }
 
         .timer-bar {
             display: flex;
@@ -472,6 +494,7 @@
             <button class="data-btn reset-group-btn group-mode-only" id="resetGroupBtn">🔄 重置小组积分</button>
             <button class="pause-btn group-mode-only" id="pauseBtn">⏸️ 暂停</button>
         </div>
+        <button class="fullscreen-btn" id="fullscreenBtn">⛶ 全屏</button>
     </div>
 
     <div class="timer-bar">
@@ -506,6 +529,32 @@
     let currentGrade = 4;
     let gameMode = "double";
     let groupDifficulty = "multiply";
+
+    // ===== 多点触控支持（适配希沃一体机）：按下即触发（pointerdown），每根手指独立响应，
+    //      并阻止浏览器生成“幽灵点击”误触其他区域；老内核浏览器自动回退到 touchstart/mousedown =====
+    function bindPress(el, handler) {
+        if (!el) return;
+        if (window.PointerEvent) {
+            el.addEventListener('pointerdown', (e) => {
+                if (e.pointerType === 'mouse' && e.button !== 0) return; // 仅响应左键/触摸/触控笔
+                e.preventDefault();
+                handler(e);
+            });
+        } else {
+            let suppressMouse = false;
+            el.addEventListener('touchstart', (e) => {
+                suppressMouse = true;
+                setTimeout(() => { suppressMouse = false; }, 500);
+                e.preventDefault();
+                handler(e);
+            }, { passive: false });
+            el.addEventListener('mousedown', (e) => {
+                if (suppressMouse || e.button !== 0) return;
+                e.preventDefault();
+                handler(e);
+            });
+        }
+    }
 
     function generateMathQuestion(grade) {
         let a, b, answer, questionText;
@@ -682,7 +731,7 @@
             const btn = document.createElement('button');
             btn.className = 'num-btn';
             btn.innerText = num;
-            btn.addEventListener('click', (e) => {
+            bindPress(btn, (e) => {
                 e.stopPropagation();
                 if (!gameActive || isPaused || penaltyActive[playerIdx] || answerLock[playerIdx]) return;
                 if (currentAnswers[playerIdx].length < 3) {
@@ -695,7 +744,7 @@
         const delBtn = document.createElement('button');
         delBtn.className = 'num-btn action-btn';
         delBtn.innerText = '⌫';
-        delBtn.addEventListener('click', () => {
+        bindPress(delBtn, () => {
             if (gameActive && !isPaused && !penaltyActive[playerIdx] && !answerLock[playerIdx]) {
                 currentAnswers[playerIdx] = currentAnswers[playerIdx].slice(0, -1);
                 document.getElementById(`answerDisplay${playerIdx}`).innerHTML = currentAnswers[playerIdx] || "?";
@@ -705,7 +754,7 @@
         const confirmBtn = document.createElement('button');
         confirmBtn.className = 'num-btn action-btn';
         confirmBtn.innerText = '✓';
-        confirmBtn.addEventListener('click', () => {
+        bindPress(confirmBtn, () => {
             if (!gameActive || isPaused || penaltyActive[playerIdx] || answerLock[playerIdx]) return;
             if (currentAnswers[playerIdx] === "") { showTip(playerIdx, "请输入答案", true); return; }
             answerLock[playerIdx] = true;
@@ -1032,7 +1081,7 @@
                 html += `<div class="rank-item"><span>${escapeHtml(stu.name)}</span><span class="rank-score">🏅 ${displayScore}</span><button class="delete-student-btn" data-name="${escapeHtml(stu.name)}">✖</button></div>`;
             }
             rankListDiv.innerHTML = html;
-            document.querySelectorAll('.delete-student-btn').forEach(btn => btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.delete-student-btn').forEach(btn => bindPress(btn, (e) => {
                 e.stopPropagation();
                 showPasswordModal(btn.getAttribute('data-name'), 'delete');
             }));
@@ -1149,9 +1198,9 @@
                 modal.remove();
             }
         };
-        grid.addEventListener('click', handleSelect);
-        closeBtn.addEventListener('click', () => modal.remove());
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        bindPress(grid, handleSelect);
+        bindPress(closeBtn, () => modal.remove());
+        bindPress(modal, (e) => { if (e.target === modal) modal.remove(); });
     }
 
     function randomPick(side) {
@@ -1254,8 +1303,8 @@
         const confirmBtn = modal.querySelector('#confirmAddBtn');
         const cancelBtn = modal.querySelector('#cancelAddBtn');
         const doAdd = () => { addNewStudent(input.value); modal.remove(); };
-        confirmBtn.addEventListener('click', doAdd);
-        cancelBtn.addEventListener('click', () => modal.remove());
+        bindPress(confirmBtn, doAdd);
+        bindPress(cancelBtn, () => modal.remove());
         input.addEventListener('keypress', e => { if (e.key === 'Enter') doAdd(); });
     }
 
@@ -1268,7 +1317,7 @@
         const confirmBtn = modal.querySelector('#confirmActionBtn');
         const cancelBtn = modal.querySelector('#cancelActionBtn');
         const close = () => modal.remove();
-        confirmBtn.addEventListener('click', () => {
+        const doConfirm = () => {
             if (input.value === DELETE_PASSWORD) {
                 if (type === 'delete') {
                     allStudents = allStudents.filter(s => s.name !== targetName);
@@ -1301,9 +1350,10 @@
                 feedbackDiv.innerHTML = "❌ 密码错误";
                 close();
             }
-        });
-        cancelBtn.addEventListener('click', close);
-        input.addEventListener('keypress', e => { if (e.key === 'Enter') confirmBtn.click(); });
+        };
+        bindPress(confirmBtn, doConfirm);
+        bindPress(cancelBtn, close);
+        input.addEventListener('keypress', e => { if (e.key === 'Enter') doConfirm(); });
     }
 
     function clearAllDataWithPassword() { showPasswordModal('', 'clear'); }
@@ -1312,21 +1362,21 @@
         for (let i = 0; i < 4; i++) {
             const btn = document.getElementById(`readyBtn${i}`);
             if (!btn) continue;
-            btn.onclick = () => {
+            bindPress(btn, () => {
                 if (gameActive || countdownActive) { feedbackDiv.innerHTML = "比赛进行中"; return; }
                 toggleReady(i, !isReady[i]);
-            };
+            });
         }
         document.querySelectorAll('.pick-student-btn').forEach(btn => {
-            btn.onclick = () => { let side = parseInt(btn.getAttribute('data-side')); showStudentPicker(side); };
+            bindPress(btn, () => { let side = parseInt(btn.getAttribute('data-side')); showStudentPicker(side); });
         });
         document.querySelectorAll('.random-icon').forEach(btn => {
-            btn.onclick = () => { let side = parseInt(btn.getAttribute('data-side')); randomPick(side); };
+            bindPress(btn, () => { let side = parseInt(btn.getAttribute('data-side')); randomPick(side); });
         });
     }
 
     modeBtns.forEach(btn => {
-        btn.addEventListener('click', () => switchMode(btn.getAttribute('data-mode')));
+        bindPress(btn, () => switchMode(btn.getAttribute('data-mode')));
     });
 
     roundCountSelect.addEventListener('change', () => {
@@ -1344,10 +1394,10 @@
         }
     });
 
-    pauseBtn.addEventListener('click', togglePause);
-    resetGroupBtn.addEventListener('click', () => showPasswordModal('', 'resetGroup'));
+    bindPress(pauseBtn, togglePause);
+    bindPress(resetGroupBtn, () => showPasswordModal('', 'resetGroup'));
 
-    document.getElementById('fileLabelBtn').addEventListener('click', () => document.getElementById('classFileInput').click());
+    bindPress(document.getElementById('fileLabelBtn'), () => document.getElementById('classFileInput').click());
     document.getElementById('classFileInput').addEventListener('change', (e) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
@@ -1356,14 +1406,38 @@
         }
         document.getElementById('classFileInput').value = '';
     });
-    document.getElementById('addStudentBtn').addEventListener('click', showAddStudentModal);
-    document.getElementById('exportDataBtn').addEventListener('click', exportToJSON);
-    document.getElementById('restoreDataBtn').addEventListener('click', () => document.getElementById('restoreFileInput').click());
+    bindPress(document.getElementById('addStudentBtn'), showAddStudentModal);
+    bindPress(document.getElementById('exportDataBtn'), exportToJSON);
+    bindPress(document.getElementById('restoreDataBtn'), () => document.getElementById('restoreFileInput').click());
     document.getElementById('restoreFileInput').addEventListener('change', (e) => {
         if (e.target.files && e.target.files[0]) restoreFromJSON(e.target.files[0]);
         e.target.value = '';
     });
-    document.getElementById('clearDataBtn').addEventListener('click', clearAllDataWithPassword);
+    bindPress(document.getElementById('clearDataBtn'), clearAllDataWithPassword);
+
+    // ===== 全屏切换（教室无键盘，触摸一键进入/退出全屏） =====
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    function toggleFullscreen() {
+        const doc = document;
+        const el = doc.documentElement;
+        try {
+            if (doc.fullscreenElement || doc.webkitFullscreenElement) {
+                if (doc.exitFullscreen) { const p = doc.exitFullscreen(); if (p && p.catch) p.catch(() => {}); }
+                else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+            } else {
+                if (el.requestFullscreen) { const p = el.requestFullscreen(); if (p && p.catch) p.catch(() => { feedbackDiv.innerHTML = "⚠️ 全屏失败，请检查浏览器设置"; }); }
+                else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                else feedbackDiv.innerHTML = "⚠️ 当前浏览器不支持全屏";
+            }
+        } catch (e) { feedbackDiv.innerHTML = "⚠️ 全屏失败，请检查浏览器设置"; }
+    }
+    function updateFullscreenBtnText() {
+        const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+        if (fullscreenBtn) fullscreenBtn.innerText = isFs ? "⛶ 退出全屏" : "⛶ 全屏";
+    }
+    document.addEventListener('fullscreenchange', updateFullscreenBtnText);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenBtnText);
+    bindPress(fullscreenBtn, toggleFullscreen);
 
     function init() {
         loadAllData();

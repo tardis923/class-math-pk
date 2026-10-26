@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>智慧数学大比拼 | 双人+小组赛</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>智慧数学大比拼 | 四人赛</title>
     <style>
         * {
             margin: 0;
@@ -54,17 +54,58 @@
             margin-bottom: 8px; 
         }
 
-        .top-toolbar {
+        /* ===== 整体布局：左侧控制栏 + 右侧主区 ===== */
+        .app-layout {
             display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: center;
+            gap: 10px;
+            align-items: stretch;
+            height: 100%;
+            min-height: 0;
+        }
+        .side-controls {
+            flex: 0 0 auto;
+            width: 180px;
+            display: flex;
+            flex-direction: column;
             gap: 8px;
             background: #f7e9d0;
-            padding: 6px 12px;
-            border-radius: 50px;
-            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 26px;
+            align-items: stretch;
+            overflow-y: auto;
         }
+        .side-controls h1 {
+            font-size: clamp(0.85rem, 2vw, 1.05rem);
+            text-align: center;
+            margin: 0 0 2px;
+        }
+        .side-controls .mode-buttons { display: flex; gap: 6px; }
+        .side-controls .mode-btn { flex: 1; padding: 9px 2px; font-size: 0.72rem; }
+        .side-controls .round-selector,
+        .side-controls .difficulty-selector { width: 100%; justify-content: space-between; }
+        .side-controls .round-selector select,
+        .side-controls .difficulty-selector select { max-width: 112px; }
+        .side-controls .round-display { text-align: center; }
+        .side-controls .manage-buttons { flex-direction: column; gap: 6px; }
+        .side-controls .manage-buttons .file-label,
+        .side-controls .manage-buttons .data-btn,
+        .side-controls .manage-buttons .pause-btn {
+            width: 100%; box-sizing: border-box;
+            padding: 8px 2px; font-size: 0.72rem;
+        }
+        .side-controls .fullscreen-btn { width: 100%; box-sizing: border-box; padding: 9px 2px; }
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+        }
+        .main-area .timer-bar { flex: 0 0 auto; }
+        .main-area .rank-area { flex: 0 0 auto; }
+        .main-area .battle-wrapper { flex: 1; }
+        .main-area .feedback { flex: 0 0 auto; }
+        .battle-wrapper.double-mode { align-items: center; }
         .mode-buttons { display: flex; gap: 6px; }
         .mode-btn {
             background: #e9dccd;
@@ -267,6 +308,139 @@
         .battle-wrapper.double-mode .player-card { min-width: 280px; }
         .battle-wrapper.group-mode .player-card { min-width: 220px; }
 
+        /* ===== 小组赛：中上部大跑道(2/3) + 下方 1/3 四组答题卡并列 ===== */
+        .group-mode .battle-wrapper {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-rows: 2fr 1fr;
+            gap: 10px;
+            align-items: stretch;
+        }
+        .group-mode .battle-wrapper .group-race-area { grid-column: 1 / -1; grid-row: 1; }
+        .group-mode .battle-wrapper .player-card { min-width: 0; }
+        .group-mode .battle-wrapper .player-card:nth-child(2) { grid-row: 2; grid-column: 1; }
+        .group-mode .battle-wrapper .player-card:nth-child(3) { grid-row: 2; grid-column: 2; }
+        .group-mode .battle-wrapper .player-card:nth-child(4) { grid-row: 2; grid-column: 3; }
+        .group-mode .battle-wrapper .player-card:nth-child(5) { grid-row: 2; grid-column: 4; }
+        /* 小组赛隐藏双人计时条与总分榜，腾出空间给跑道和答题卡 */
+        .group-mode .timer-bar { display: none; }
+        .group-mode .rank-area { display: none; }
+
+        .group-race-area {
+            background: #2c2e3e;
+            border-radius: 30px;
+            padding: 8px 14px 10px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.25);
+            color: #FFE484;
+        }
+        .race-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+        }
+        .race-title { font-size: 0.85rem; font-weight: bold; }
+        .race-clock { font-size: 1.1rem; font-weight: bold; font-family: monospace; color: #FFE484; }
+        .race-status {
+            font-size: 0.75rem; font-weight: bold; color: #FFE484;
+            background: rgba(255,255,255,0.12); padding: 3px 12px; border-radius: 30px;
+        }
+        .race-result {
+            display: none;
+            background: rgba(255,255,255,0.14);
+            border: 2px solid #FFD966;
+            border-radius: 20px;
+            padding: 8px 16px;
+            margin-bottom: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #FFF3C4;
+            line-height: 1.6;
+        }
+        .race-result.show { display: block; }
+        .race-lanes { position: relative; }
+        .race-lane { position: relative; height: 32px; }
+        .lane-track {
+            position: absolute;
+            left: 70px; right: 100px; top: 50%;
+            height: 18px; transform: translateY(-50%);
+            background: repeating-linear-gradient(90deg, #4a4d63 0 14px, #3a3d52 14px 28px);
+            border-radius: 9px;
+            border: 1px solid #2a2c3e;
+        }
+        .lane-track::after { /* 终点线 */
+            content: "";
+            position: absolute;
+            right: 0; top: -3px; bottom: -3px;
+            width: 4px;
+            background: repeating-linear-gradient(180deg, #fff 0 5px, #111 5px 10px);
+            border-radius: 2px;
+        }
+        .lane-name {
+            position: absolute; left: 2px; top: 50%; transform: translateY(-50%);
+            font-size: 0.68rem; font-weight: bold; color: #FFE484;
+            width: 66px; text-align: right; padding-right: 4px;
+            display: flex; align-items: center; justify-content: flex-end; gap: 3px;
+        }
+        .lane-name .mini-avatar { width: 18px; height: 18px; flex: 0 0 auto; }
+        .lane-time {
+            position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+            font-size: 0.68rem; font-weight: bold; color: #7ee2a8;
+            width: 98px; text-align: left; padding-left: 4px;
+        }
+        .lane-runner {
+            position: absolute; top: 50%;
+            transform: translateY(-50%) translateX(-20%);
+            left: 0; width: 28px; height: 28px; z-index: 3;
+            transition: left 0.45s cubic-bezier(0.3, 1.1, 0.4, 1);
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
+        }
+        .lane-runner.finished { filter: drop-shadow(0 0 6px #7ee2a8); }
+
+        /* 小组赛卡片：下方 1/3 四列并列，内容紧凑可完整显示 */
+        .group-mode h1 { font-size: 0.95rem; margin: 2px 0; }
+        .group-mode .player-card { padding: 4px 6px; border-radius: 20px; }
+        .group-mode .player-name-big { font-size: 0.8rem; padding: 2px 7px; }
+        .group-mode .player-header { margin-bottom: 1px; gap: 3px; }
+        .group-mode .ready-btn { font-size: 0.62rem; padding: 2px 0; margin-top: 1px; border-radius: 24px; }
+        .group-mode .ready-status { display: none; } /* 按钮文字即状态，省一行 */
+        .group-mode .score-board { font-size: 0.7rem; padding: 1px 2px; margin: 1px 0; }
+        .group-mode .question-area { padding: 3px; border-radius: 14px; margin-bottom: 0; display: flex; flex-direction: column; flex: 1; }
+        .group-mode .question-text { font-size: 0.85rem; }
+        .group-mode .answer-area { padding: 2px; margin-top: 1px; display: flex; flex-direction: column; flex: 1; }
+        .group-mode .answer-input { font-size: 0.88rem; min-height: 24px; padding: 2px 4px; margin-bottom: 2px; }
+        .group-mode .numpad { gap: 3px; flex: 1; grid-auto-rows: 1fr; }
+        .group-mode .num-btn { padding: 3px 0; font-size: 0.85rem; border-radius: 24px; }
+        .group-mode .round-tag {
+            display: inline-block;
+            background: #9b59b6; color: white;
+            border-radius: 30px; padding: 2px 9px;
+            font-size: 0.62rem; font-weight: bold;
+            margin-left: 4px;
+        }
+        .group-mode .round-tag.done { background: #27ae60; }
+        /* 大跑道：占主区上方约 2/3，画面大而醒目（按 768px 视口高基准适配） */
+        .group-mode .group-race-area { padding: 12px 198px 10px 18px; border-radius: 30px; } /* 右留白与左栏+左边距对称，赛道在宽屏视口正中 */
+        .group-mode .race-head { margin-bottom: 8px; gap: 12px; }
+        .group-mode .race-title { font-size: 1.2rem; }
+        .group-mode .race-clock { font-size: 1.7rem; }
+        .group-mode .race-status { font-size: 1rem; padding: 6px 20px; }
+        .group-mode .race-lane { height: 96px; display: flex; align-items: center; }
+        .group-mode .lane-name { position: relative; left: auto; top: auto; transform: none; flex: none; width: 210px; font-size: 1.1rem; justify-content: flex-start; }
+        .group-mode .lane-name .mini-avatar { width: 42px; height: 42px; flex: 0 0 auto; }
+        .group-mode .lane-track { position: relative; left: auto; right: auto; top: auto; transform: none; flex: 1; height: 44px; border-radius: 22px; margin: 0 6px; }
+        .group-mode .lane-runner { width: 84px; height: 84px; }
+        .group-mode .lane-time { position: relative; right: auto; top: auto; transform: none; flex: none; width: 210px; font-size: 1.1rem; text-align: right; }
+        .group-mode .feedback { display: none; } /* 规则已显示在跑道顶部，页脚隐藏避免溢出 */
+        /* 卡丁车：车轮持续旋转（仅在跑道内生效） */
+        .group-mode .lane-runner svg { display: block; width: 100%; height: 100%; }
+        .group-mode .lane-runner svg .kart-wheel { animation: kartSpin .32s linear infinite; }
+        .group-mode .lane-runner svg .kart-wb { transform-box: view-box; transform-origin: 24px 78px; }
+        .group-mode .lane-runner svg .kart-wf { transform-box: view-box; transform-origin: 76px 80px; }
+        @keyframes kartSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
         .player-card {
             flex: 1;
             background: #FFFDF5;
@@ -453,66 +627,105 @@
         @media (max-width: 1100px) {
             .battle-wrapper { flex-wrap: wrap; justify-content: center; }
             .player-card { min-width: 260px !important; max-width: 48%; }
+            .group-mode .battle-wrapper {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-template-rows: 2fr 1fr 1fr;
+            }
+            .group-mode .battle-wrapper .player-card { min-width: 0 !important; max-width: none; }
+            .group-mode .battle-wrapper .player-card:nth-child(2) { grid-row: 2; grid-column: 1; }
+            .group-mode .battle-wrapper .player-card:nth-child(3) { grid-row: 2; grid-column: 2; }
+            .group-mode .battle-wrapper .player-card:nth-child(4) { grid-row: 3; grid-column: 1; }
+            .group-mode .battle-wrapper .player-card:nth-child(5) { grid-row: 3; grid-column: 2; }
+            .side-controls { width: 158px; }
+        }
+        @media (max-width: 1600px) {
+            /* 非宽屏：取消右留白对称，赛道按主区居中即可，避免轨道过窄 */
+            .group-mode .group-race-area { padding-right: 18px; }
+        }
+        @media (max-width: 900px) {
+            .app-layout { flex-direction: column; }
+            .side-controls {
+                width: auto;
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                align-items: center;
+                gap: 6px;
+            }
+            .side-controls .manage-buttons { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+            .side-controls .manage-buttons .file-label,
+            .side-controls .manage-buttons .data-btn,
+            .side-controls .manage-buttons .pause-btn { width: auto; padding: 6px 12px; }
+            .side-controls .fullscreen-btn { width: auto; padding: 6px 14px; }
         }
         @media (max-width: 700px) {
             .player-card { max-width: 100%; }
+            .group-mode .battle-wrapper {
+                grid-template-columns: 1fr;
+                grid-template-rows: repeat(5, auto);
+            }
+            .group-mode .battle-wrapper .group-race-area { grid-row: 1; grid-column: 1; }
+            .group-mode .battle-wrapper .player-card:nth-child(2) { grid-row: 2; }
+            .group-mode .battle-wrapper .player-card:nth-child(3) { grid-row: 3; }
+            .group-mode .battle-wrapper .player-card:nth-child(4) { grid-row: 4; }
+            .group-mode .battle-wrapper .player-card:nth-child(5) { grid-row: 5; }
         }
     </style>
 </head>
 <body>
 <div class="game-container" id="gameContainer">
-    <h1>🧮 智慧数学大比拼 🧮</h1>
-
-    <div class="top-toolbar">
-        <div class="mode-buttons">
-            <button class="mode-btn active" data-mode="double">👥 双人对战</button>
-            <button class="mode-btn" data-mode="group">🏆 小组赛(4组)</button>
-        </div>
-        <div class="round-selector group-mode-only">
-            <span>轮数：</span>
-            <select id="roundCountSelect">
-                <option value="12">12 轮</option>
-                <option value="15" selected>15 轮</option>
-                <option value="20">20 轮</option>
-            </select>
-        </div>
-        <div class="difficulty-selector group-mode-only">
-            <span>难度：</span>
-            <select id="groupDifficultySelect">
-                <option value="addsub">三位数加减</option>
-                <option value="muladdsub" selected>一位数乘一位数再加减</option>
-                <option value="decimal">两位数加减（带小数点后一位）</option>
-            </select>
-        </div>
-        <div class="round-display group-mode-only" id="roundDisplay">第 0 / 15 轮</div>
-        <div class="manage-buttons">
-            <label class="file-label double-mode-only" id="fileLabelBtn">📁 导入班级</label>
-            <input type="file" id="classFileInput" accept=".txt">
-            <button class="data-btn double-mode-only" id="addStudentBtn">➕ 新生</button>
-            <button class="data-btn double-mode-only" id="exportDataBtn">💾 备份</button>
-            <button class="data-btn double-mode-only" id="restoreDataBtn">📂 还原</button>
-            <input type="file" id="restoreFileInput" accept=".json" style="display:none">
-            <button class="data-btn danger-btn double-mode-only" id="clearDataBtn">🗑️ 清除双人</button>
-            <button class="data-btn reset-group-btn group-mode-only" id="resetGroupBtn">🔄 重置小组积分</button>
-            <button class="pause-btn group-mode-only" id="pauseBtn">⏸️ 暂停</button>
-        </div>
-        <button class="fullscreen-btn" id="fullscreenBtn">⛶ 全屏</button>
+    <div class="app-layout">
+        <aside class="side-controls" id="sideControls">
+            <h1>🧮 智慧数学大比拼 🧮</h1>
+            <div class="mode-buttons">
+                <button class="mode-btn active" data-mode="group">🏆 四人赛</button>
+            </div>
+            <div class="round-selector group-mode-only">
+                <span>题目数量：</span>
+                <select id="roundCountSelect">
+                    <option value="12">12 题</option>
+                    <option value="15" selected>15 题</option>
+                    <option value="20">20 题</option>
+                </select>
+            </div>
+            <div class="difficulty-selector group-mode-only">
+                <span>难度：</span>
+                <select id="groupDifficultySelect">
+                    <option value="addsub">三位数加减</option>
+                    <option value="muladdsub" selected>一位数乘一位数再加减</option>
+                    <option value="decimal">两位数加减（带小数点后一位）</option>
+                </select>
+            </div>
+            <div class="round-display group-mode-only" id="roundDisplay">共 15 题</div>
+            <div class="manage-buttons">
+                <label class="file-label double-mode-only" id="fileLabelBtn">📁 导入班级</label>
+                <input type="file" id="classFileInput" accept=".txt">
+                <button class="data-btn double-mode-only" id="addStudentBtn">➕ 新生</button>
+                <button class="data-btn double-mode-only" id="exportDataBtn">💾 备份</button>
+                <button class="data-btn double-mode-only" id="restoreDataBtn">📂 还原</button>
+                <input type="file" id="restoreFileInput" accept=".json" style="display:none">
+                <button class="data-btn danger-btn double-mode-only" id="clearDataBtn">🗑️ 清除双人</button>
+                <button class="data-btn reset-group-btn group-mode-only" id="resetGroupBtn">🔄 重置比赛</button>
+                <button class="pause-btn group-mode-only" id="pauseBtn">⏸️ 暂停</button>
+            </div>
+            <button class="fullscreen-btn" id="fullscreenBtn">⛶ 全屏</button>
+        </aside>
+        <main class="main-area" id="mainArea">
+            <div class="timer-bar">
+                <span class="timer-label">⏱️ 剩余时间</span>
+                <span class="timer-digits" id="timerDisplay">60</span>
+                <span class="timer-label">秒</span>
+                <span class="round-indicator" id="roundIndicator">准备中</span>
+            </div>
+            <div class="rank-area">
+                <div class="rank-title" id="rankTitle">🏆 双人荣耀榜 (胜+1 / 负+0.1) 🏆</div>
+                <div class="rank-list" id="rankList">暂无学生</div>
+            </div>
+            <div class="battle-wrapper" id="battleWrapper"></div>
+            <div class="feedback" id="feedbackMsg">✨ 四人赛：4组各自准备后开始 ✨</div>
+        </main>
     </div>
-
-    <div class="timer-bar">
-        <span class="timer-label">⏱️ 剩余时间</span>
-        <span class="timer-digits" id="timerDisplay">60</span>
-        <span class="timer-label">秒</span>
-        <span class="round-indicator" id="roundIndicator">准备中</span>
-    </div>
-
-    <div class="rank-area">
-        <div class="rank-title" id="rankTitle">🏆 双人荣耀榜 (胜+1 / 负+0.1) 🏆</div>
-        <div class="rank-list" id="rankList">暂无学生</div>
-    </div>
-
-    <div class="battle-wrapper" id="battleWrapper"></div>
-    <div class="feedback" id="feedbackMsg">✨ 双人对战：双方选人后准备 ✨ 小组赛：4组各自准备后开始 ✨</div>
     <div id="countdownOverlay" style="display:none;" class="countdown-overlay"></div>
 </div>
 
@@ -741,9 +954,7 @@
     function speakNumber(num) { speakText(num.toString()); }
 
     const STORAGE_STUDENTS = "ClassRosterData";
-    const STORAGE_GROUP = "GroupMatchData";
     let allStudents = [];
-    let groupTotalScore = [0, 0, 0, 0];
 
     let leftName = "待选", rightName = "待选";
 
@@ -762,6 +973,34 @@
     let isPaused = false;
     let totalRounds = 15;
     let currentRound = 0;
+
+        // ===== 卡丁车赛跑角色：4 组固定颜色、车轮旋转动画（无自定义选择） =====
+    function kartSvg(i) {
+        const body = ['#ef5350', '#42a5f5', '#66bb6a', '#ffa726'][i] || '#ef5350';
+        const helmet = ['#ffffff', '#ffee58', '#ffffff', '#3e2723'][i] || '#ffffff';
+        const driver = ['#ffcc80', '#ffe0b2', '#ffcc80', '#ffe0b2'][i] || '#ffcc80';
+        return `<svg viewBox="0 0 100 100">
+  <g class="kart-wheel kart-wb"><circle cx="24" cy="78" r="12" fill="#3e3a39"/><circle cx="24" cy="78" r="5.5" fill="#e0e0e0"/><path d="M24 71 L24 85 M17 78 L31 78" stroke="#8d8d8d" stroke-width="2.6" stroke-linecap="round"/></g>
+  <g class="kart-wheel kart-wf"><circle cx="76" cy="80" r="10" fill="#3e3a39"/><circle cx="76" cy="80" r="4.5" fill="#e0e0e0"/><path d="M76 74 L76 86 M70 80 L82 80" stroke="#8d8d8d" stroke-width="2.4" stroke-linecap="round"/></g>
+  <path d="M16 58 L22 58 L23 66 L15 66 Z" fill="${body}"/>
+  <path d="M16 70 L84 66 Q90 66 89 71 L86 77 L18 79 Z" fill="#2e2a26"/>
+  <path d="M22 63 Q26 55 46 55 L62 57 Q76 59 82 67 L24 70 Z" fill="${body}"/>
+  <path d="M30 56 Q34 49 46 50 L56 51 Q50 56 40 58 Z" fill="${driver}"/>
+  <circle cx="44" cy="44" r="9.5" fill="${helmet}"/>
+  <circle cx="47" cy="43" r="1.8" fill="#3e2723"/>
+  <path d="M50 62 L60 60" stroke="#8d6e63" stroke-width="3.5" stroke-linecap="round"/>
+</svg>`;
+    }
+
+    // ===== 小组赛：赛跑模式状态（每组独立进度 + 总用时） =====
+    let groupBank = null;         // groupBank[i][n]：第i组第n题（同题号4题相近）
+    let groupPos = [0, 0, 0, 0];  // 每组当前题索引（0-based）
+    let groupFinished = [false, false, false, false];
+    let finishTime = [null, null, null, null]; // 每组完成用时（秒）
+    let raceElapsed = 0;          // 已用时间（秒，可暂停累计）
+    let raceInterval = null;
+    let raceRunning = false;
+    let raceStatus = 'waiting';   // waiting | running | finished
 
     const gameContainer = document.getElementById('gameContainer');
     const battleWrapper = document.getElementById('battleWrapper');
@@ -782,6 +1021,7 @@
         battleWrapper.innerHTML = '';
         const count = (gameMode === 'double') ? 2 : 4;
         battleWrapper.className = 'battle-wrapper ' + (gameMode === 'double' ? 'double-mode' : 'group-mode');
+        if (gameMode === 'group') buildRaceArea(); // 中间跑道（grid 第2行）
         for (let i = 0; i < count; i++) {
             const card = document.createElement('div');
             card.className = 'player-card';
@@ -800,8 +1040,7 @@
                 <button class="ready-btn" id="readyBtn${i}">👊 我已准备好</button>
                 <div class="ready-status" id="readyStatus${i}">⚪ 未准备</div>
                 <div class="score-board">
-                    🏅 本轮得分 : <span id="score${i}">0</span>
-                    <span class="total-score" id="totalScore${i}"></span>
+                    ${isDouble ? '' : `<span class="round-tag" id="roundTag${i}">第1/${totalRounds}题</span>`}
                 </div>
                 <div class="question-area" id="questionArea${i}">
                     <div class="question-text" id="questionText${i}">❓ 算式</div>
@@ -816,14 +1055,10 @@
             if (gameMode !== 'group') refreshPlayerQuestion(i);
             questionAreaHide(i);
         }
-        if (gameMode === 'group') refreshAllGroupQuestions();
         bindPlayerEvents();
         updateReadyBtnState();
         if (gameMode === 'group') {
-            for (let i = 0; i < 4; i++) {
-                const totalEl = document.getElementById(`totalScore${i}`);
-                if (totalEl) totalEl.innerText = ` (总:${groupTotalScore[i]}分)`;
-            }
+            updateRaceUI();
         }
     }
 
@@ -884,11 +1119,9 @@
             const userAnswer = currentAnswers[playerIdx];
             const correct = currentQuestions[playerIdx].correctAnswer;
             if (userAnswer === correct) {
-                displayedScore[playerIdx] += 10;
-                document.getElementById(`score${playerIdx}`).innerText = displayedScore[playerIdx];
-                showTip(playerIdx, "🎉 +10分", false);
-                // 小组赛：四人题目各不相同但结果相近（难度一致），有人答对则全组换下一组题
-                if (gameMode === 'group') refreshAllGroupQuestions();
+                showTip(playerIdx, "🎉 答对", false);
+                // 小组赛：该组独立推进下一题（跑道前进1格）；双人赛各自换题
+                if (gameMode === 'group') advanceGroupPlayer(playerIdx);
                 else refreshPlayerQuestion(playerIdx);
             } else {
                 showTip(playerIdx, "❌ 答错 禁答", true);
@@ -928,7 +1161,7 @@
         const div = document.createElement('div');
         div.className = 'tip-float';
         div.innerText = msg;
-        div.style.cssText = 'position:absolute;bottom:70%;left:50%;transform:translateX(-50%);background:' + (isErr?'#ffd9d4':'#c8e6d9') + ';padding:4px 10px;border-radius:25px;font-weight:bold;font-size:0.65rem;white-space:nowrap;z-index:30;';
+        div.style.cssText = 'position:absolute;top:6px;left:50%;transform:translateX(-50%);background:' + (isErr?'#ffd9d4':'#c8e6d9') + ';padding:4px 10px;border-radius:25px;font-weight:bold;font-size:0.65rem;white-space:nowrap;z-index:30;';
         card.style.position = 'relative';
         card.appendChild(div);
         setTimeout(() => { if (div && div.remove) div.remove(); }, 800);
@@ -946,25 +1179,136 @@
         const ad = document.getElementById(`answerDisplay${i}`);
         if (ad) ad.innerHTML = "?";
     }
-    // 小组赛：四人题目各不相同，但结果保持相近（整数±3、小数±0.5），保证难度一致；
-    // 有人答对则全组统一换下一组题
-    function refreshAllGroupQuestions() {
-        let qs = null;
-        for (let attempt = 0; attempt < 20 && !qs; attempt++) {
-            qs = buildClusterQuestions();
-        }
-        if (!qs) { // 极端兜底：各自独立出题（几乎不会触发）
-            qs = [null, null, null, null];
-            for (let i = 0; i < 4; i++) qs[i] = generateGroupMathQuestion(groupDifficulty);
-        }
+    // ===== 小组赛：赛跑模式（中间跑道 + 每组独立进度 + 比完成总用时） =====
+    function buildRaceArea() {
+        const area = document.createElement('div');
+        area.className = 'group-race-area';
+        area.id = 'groupRaceArea';
+        area.innerHTML = `
+            <div class="race-head">
+                <span class="race-title">🏃 赛跑：答对1题前进1格，共 ${totalRounds} 格，先到终点者胜</span>
+                <span class="race-clock" id="raceClock">⏱️ 用时 0.0 秒</span>
+                <span class="race-status" id="raceStatus">等待准备</span>
+            </div>
+            <div class="race-result" id="raceResult"></div>
+            <div class="race-lanes" id="raceLanes">
+                ${[0,1,2,3].map(i => `
+                <div class="race-lane" id="raceLane${i}">
+                    <span class="lane-name"><span class="mini-avatar">${kartSvg(i)}</span>第${i+1}组</span>
+                    <div class="lane-track"><div class="lane-runner" id="runner${i}">${kartSvg(i)}</div></div>
+                    <span class="lane-time" id="laneTime${i}"></span>
+                </div>`).join('')}
+            </div>
+        `;
+        battleWrapper.appendChild(area);
+    }
+
+    function updateRaceUI() {
         for (let i = 0; i < 4; i++) {
-            currentQuestions[i] = qs[i];
+            const runner = document.getElementById(`runner${i}`);
+            if (runner) {
+                const pct = (totalRounds === 0) ? 0 : Math.min(1, groupPos[i] / totalRounds);
+                runner.style.left = (pct * 100) + '%'; // 相对轨道宽度的百分比位置
+                runner.classList.toggle('finished', groupFinished[i]);
+            }
+            const tag = document.getElementById(`roundTag${i}`);
+            if (tag) {
+                tag.innerText = groupFinished[i] ? '✅ 完成' : `第${Math.min(groupPos[i] + 1, totalRounds)}/${totalRounds}题`;
+                tag.classList.toggle('done', groupFinished[i]);
+            }
+            const lt = document.getElementById(`laneTime${i}`);
+            if (lt) lt.innerText = (groupFinished[i] && finishTime[i] != null) ? `✅ ${finishTime[i].toFixed(1)}秒` : '';
+            const card = document.getElementById(`playerCard${i}`);
+            if (card) card.classList.toggle('disabled-click', groupFinished[i]);
+        }
+        const clock = document.getElementById('raceClock');
+        if (clock) clock.innerText = `⏱️ 用时 ${(raceElapsed / 1000).toFixed(1)} 秒`;
+        const st = document.getElementById('raceStatus');
+        if (st) st.innerText = raceStatus === 'finished' ? '全部完成' : (raceStatus === 'running' ? '比赛进行中' : '等待准备');
+    }
+
+    // 预生成全部题库：第n题4人一组的题目相近（整数±3、小数±0.5），每组独立取用
+    function buildGroupBank() {
+        const bank = [];
+        for (let n = 0; n < totalRounds; n++) {
+            let qs = null;
+            for (let attempt = 0; attempt < 40 && !qs; attempt++) qs = buildClusterQuestions();
+            if (!qs) {
+                qs = [null, null, null, null];
+                for (let i = 0; i < 4; i++) qs[i] = generateGroupMathQuestion(groupDifficulty);
+            }
+            bank.push(qs);
+        }
+        const gb = [];
+        for (let i = 0; i < 4; i++) { gb[i] = []; for (let n = 0; n < totalRounds; n++) gb[i].push(bank[n][i]); }
+        return gb;
+    }
+
+    function showGroupQuestion(i) {
+        if (!groupBank || !groupBank[i] || groupFinished[i]) return;
+        const q = groupBank[i][groupPos[i]];
+        currentQuestions[i] = q;
+        currentAnswers[i] = "";
+        const el = document.getElementById(`questionText${i}`);
+        if (el) el.innerHTML = q.questionText;
+        const ad = document.getElementById(`answerDisplay${i}`);
+        if (ad) ad.innerHTML = "?";
+    }
+
+    // 小组赛：该组答对 → 推进一题并更新跑道；完成全部题目则记录该组总用时
+    function advanceGroupPlayer(i) {
+        if (groupFinished[i]) return;
+        groupPos[i]++;
+        if (groupPos[i] >= totalRounds) {
+            groupFinished[i] = true;
+            finishTime[i] = raceElapsed / 1000;
             currentAnswers[i] = "";
-            const el = document.getElementById(`questionText${i}`);
-            if (el) el.innerHTML = qs[i].questionText;
             const ad = document.getElementById(`answerDisplay${i}`);
             if (ad) ad.innerHTML = "?";
+            const area = document.getElementById(`questionArea${i}`);
+            if (area) area.classList.add('question-hidden');
+            updateRaceUI();
+            if (groupFinished.every(f => f)) endGroupRace();
+            return;
         }
+        showGroupQuestion(i);
+        updateRaceUI();
+    }
+
+    function startRaceClock() {
+        stopRaceClock();
+        raceRunning = true;
+        raceStatus = 'running';
+        raceInterval = setInterval(() => {
+            if (isPaused) return; // 暂停期间不计时
+            raceElapsed += 100;
+            const clock = document.getElementById('raceClock');
+            if (clock) clock.innerText = `⏱️ 用时 ${(raceElapsed / 1000).toFixed(1)} 秒`;
+        }, 100);
+        updateRaceUI();
+    }
+    function stopRaceClock() {
+        raceRunning = false;
+        if (raceInterval) { clearInterval(raceInterval); raceInterval = null; }
+    }
+
+    function endGroupRace() {
+        gameActive = false;
+        stopRaceClock();
+        raceStatus = 'finished';
+        setAllControlsDisabled(true);
+        updateRankingUI();
+        const order = [0,1,2,3].filter(i => groupFinished[i]).sort((a, b) => finishTime[a] - finishTime[b]);
+        const medals = ['🥇', '🥈', '🥉', '🏅'];
+        let html = `🏁 赛跑结束！按完成总用时排名：<br>`;
+        order.forEach((idx, rank) => {
+            html += `${medals[rank] || '🏅'} 第${idx + 1}组：用时 ${finishTime[idx].toFixed(1)} 秒<br>`;
+        });
+        const res = document.getElementById('raceResult');
+        if (res) { res.innerHTML = html; res.classList.add('show'); }
+        speakText("比赛结束");
+        resetReadyState();
+        updateRaceUI();
     }
     function questionAreaHide(i) {
         const area = document.getElementById(`questionArea${i}`);
@@ -1034,38 +1378,41 @@
             if (penaltyTimers[i]) clearTimeout(penaltyTimers[i]);
             penaltyActive[i] = false;
             answerLock[i] = false;
-            displayedScore[i] = 0;
             const card = document.getElementById(`playerCard${i}`);
             if (card) card.classList.remove('penalty-active', 'disabled-click', 'paused-card');
-            const scoreEl = document.getElementById(`score${i}`);
-            if (scoreEl) scoreEl.innerText = "0";
             questionAreaShow(i);
         }
-        // 小组赛四人题目不同但结果相近（难度一致），双人赛各自独立出题
-        if (gameMode === 'group') refreshAllGroupQuestions();
-        else for (let i = 0; i < 4; i++) refreshPlayerQuestion(i);
 
         if (gameMode === 'double') {
+            for (let i = 0; i < 2; i++) refreshPlayerQuestion(i);
             timeLeft = 60;
+            timerDisplay.innerText = timeLeft;
+            gameActive = true;
+            setAllControlsDisabled(false);
+            feedbackDiv.innerHTML = `⚔️ 双人对战开始！ ${leftName} VS ${rightName}`;
+            speakText("比赛开始");
+            startTimerRun();
         } else {
-            currentRound++;
-            roundDisplay.innerText = `第 ${currentRound} / ${totalRounds} 轮`;
-            roundIndicator.innerText = `第 ${currentRound} / ${totalRounds} 轮`;
-            timeLeft = GROUP_TIME;
+            // 小组赛：预生成全部题库（同题号4题相近），每组独立答题、比完成总用时
+            groupBank = buildGroupBank();
+            groupPos = [0, 0, 0, 0];
+            groupFinished = [false, false, false, false];
+            finishTime = [null, null, null, null];
+            raceElapsed = 0;
+            const res = document.getElementById('raceResult');
+            if (res) { res.innerHTML = ''; res.classList.remove('show'); }
             for (let i = 0; i < 4; i++) {
-                const totalEl = document.getElementById(`totalScore${i}`);
-                if (totalEl) totalEl.innerText = ` (总:${groupTotalScore[i]}分)`;
+                currentQuestions[i] = null;
+                currentAnswers[i] = "";
+                showGroupQuestion(i);
             }
+            updateRaceUI();
+            gameActive = true;
+            setAllControlsDisabled(false);
+            feedbackDiv.innerHTML = `🏃 比赛开始！各组独立答题，共 ${totalRounds} 题，答对1题前进1格，先到终点者胜（比总用时）`;
+            speakText("比赛开始");
+            startRaceClock();
         }
-
-        timerDisplay.innerText = timeLeft;
-        gameActive = true;
-        setAllControlsDisabled(false);
-        feedbackDiv.innerHTML = gameMode === 'double'
-            ? `⚔️ 双人对战开始！ ${leftName} VS ${rightName}`
-            : `🏆 小组赛第 ${currentRound} 轮开始！ 难度：${getDifficultyName(groupDifficulty)}`;
-        speakText(gameMode === 'double' ? "比赛开始" : `第${currentRound}轮开始`);
-        startTimerRun();
     }
 
     function getDifficultyName(d) {
@@ -1104,84 +1451,37 @@
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
         gameActive = false;
         setAllControlsDisabled(true);
-
-        if (gameMode === 'double') {
-            const leftScore = displayedScore[0];
-            const rightScore = displayedScore[1];
-            let winnerName = null, loserName = null;
-            if (leftScore > rightScore) { winnerName = leftName; loserName = rightName; }
-            else if (rightScore > leftScore) { winnerName = rightName; loserName = leftName; }
-            let message = "";
-            if (winnerName && winnerName !== "待选" && allStudents.some(s => s.name === winnerName)) {
-                addScoreToStudent(winnerName, 1.0);
-                message = `🏆 获胜方：${winnerName} 🏆 +1分！ `;
-                if (loserName && loserName !== "待选" && allStudents.some(s => s.name === loserName)) {
-                    addScoreToStudent(loserName, 0.1);
-                    message += `${loserName} +0.1分。 `;
-                }
-                message += `比分 ${leftScore} : ${rightScore}`;
-            } else if (leftScore === rightScore) {
-                message = `🤝 平局！ 比分 ${leftScore} : ${rightScore}，双方不加分`;
-            } else {
-                message = `⚠️ 无有效胜者，比分 ${leftScore} : ${rightScore}`;
+        // 仅双人模式使用（小组赛为完成赛：全部答完即按总用时排名，见 endGroupRace）
+        const leftScore = displayedScore[0];
+        const rightScore = displayedScore[1];
+        let winnerName = null, loserName = null;
+        if (leftScore > rightScore) { winnerName = leftName; loserName = rightName; }
+        else if (rightScore > leftScore) { winnerName = rightName; loserName = leftName; }
+        let message = "";
+        if (winnerName && winnerName !== "待选" && allStudents.some(s => s.name === winnerName)) {
+            addScoreToStudent(winnerName, 1.0);
+            message = `🏆 获胜方：${winnerName} 🏆 +1分！ `;
+            if (loserName && loserName !== "待选" && allStudents.some(s => s.name === loserName)) {
+                addScoreToStudent(loserName, 0.1);
+                message += `${loserName} +0.1分。 `;
             }
-            feedbackDiv.innerHTML = message;
-            leftName = "待选"; rightName = "待选";
-            document.getElementById('pName0').innerText = leftName;
-            document.getElementById('pName1').innerText = rightName;
-            resetReadyState();
-            for (let i = 0; i < 2; i++) {
-                questionAreaHide(i);
-                document.getElementById(`questionText${i}`).innerHTML = "❓ 算式";
-                document.getElementById(`answerDisplay${i}`).innerHTML = "?";
-            }
-            setAllControlsDisabled(false);
+            message += `比分 ${leftScore} : ${rightScore}`;
+        } else if (leftScore === rightScore) {
+            message = `🤝 平局！ 比分 ${leftScore} : ${rightScore}，双方不加分`;
         } else {
-            for (let i = 0; i < 4; i++) {
-                groupTotalScore[i] += displayedScore[i];
-                const totalEl = document.getElementById(`totalScore${i}`);
-                if (totalEl) totalEl.innerText = ` (总:${groupTotalScore[i]}分)`;
-            }
-            saveGroupData();
-
-            if (currentRound < totalRounds) {
-                feedbackDiv.innerHTML = `✅ 第 ${currentRound} 轮结束！ 5秒后自动开始第 ${currentRound + 1} 轮...`;
-                speakText("本轮结束，准备下一轮");
-                let remain = 5;
-                countdownOverlay.style.display = "flex";
-                countdownOverlay.innerText = remain;
-                speakNumber(remain);
-                const nextRoundTimer = setInterval(() => {
-                    remain--;
-                    if (remain <= 0) {
-                        clearInterval(nextRoundTimer);
-                        countdownOverlay.style.display = "none";
-                        resetReadyState();
-                        for (let i = 0; i < 4; i++) {
-                            questionAreaHide(i);
-                        }
-                        beginRound();
-                    } else {
-                        countdownOverlay.innerText = remain;
-                        speakNumber(remain);
-                    }
-                }, 1000);
-            } else {
-                showGroupFinalRanking();
-            }
+            message = `⚠️ 无有效胜者，比分 ${leftScore} : ${rightScore}`;
         }
-    }
-
-    function showGroupFinalRanking() {
-        const sorted = groupTotalScore.map((score, idx) => ({ idx, score })).sort((a, b) => b.score - a.score);
-        let html = `🎉 小组赛全部 ${totalRounds} 轮完成！<br>`;
-        sorted.forEach((item, rank) => {
-            const medal = rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : '🏅';
-            html += `${medal} 第${item.idx + 1}组：${item.score} 分<br>`;
-        });
-        feedbackDiv.innerHTML = html;
-        updateRankingUI();
-        roundIndicator.innerText = '已完成';
+        feedbackDiv.innerHTML = message;
+        leftName = "待选"; rightName = "待选";
+        document.getElementById('pName0').innerText = leftName;
+        document.getElementById('pName1').innerText = rightName;
+        resetReadyState();
+        for (let i = 0; i < 2; i++) {
+            questionAreaHide(i);
+            document.getElementById(`questionText${i}`).innerHTML = "❓ 算式";
+            document.getElementById(`answerDisplay${i}`).innerHTML = "?";
+        }
+        setAllControlsDisabled(false);
     }
 
     function togglePause() {
@@ -1238,14 +1538,8 @@
                 showPasswordModal(btn.getAttribute('data-name'), 'delete');
             }));
         } else {
-            rankTitleSpan.innerHTML = "🏆 小组赛榜 (四组总分) 🏆";
-            let sorted = groupTotalScore.map((score, idx) => ({ idx, score })).sort((a, b) => b.score - a.score);
-            let html = '';
-            sorted.forEach((item, rank) => {
-                const medal = rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : '🏅';
-                html += `<div class="rank-item"><span>${medal} 第${item.idx + 1}组</span><span class="rank-score">🏅 ${item.score} 分</span></div>`;
-            });
-            rankListDiv.innerHTML = html;
+            rankTitleSpan.innerHTML = "🏆 四人赛榜 🏆";
+            rankListDiv.innerHTML = "<div>赛车模式只统计完成时间，不累计积分</div>";
         }
         saveAllData();
     }
@@ -1255,15 +1549,11 @@
         try {
             if (allStudents.length) localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(allStudents));
             else localStorage.removeItem(STORAGE_STUDENTS);
-            localStorage.setItem(STORAGE_GROUP, JSON.stringify(groupTotalScore));
         } catch (e) { }
     }
-    function saveGroupData() { try { localStorage.setItem(STORAGE_GROUP, JSON.stringify(groupTotalScore)); } catch (e) { } }
     function loadAllData() {
         const stored = localStorage.getItem(STORAGE_STUDENTS);
         if (stored) try { let arr = JSON.parse(stored); if (Array.isArray(arr)) allStudents = arr; } catch (e) { }
-        const g = localStorage.getItem(STORAGE_GROUP);
-        if (g) try { let arr = JSON.parse(g); if (Array.isArray(arr) && arr.length === 4) groupTotalScore = arr; } catch (e) { }
     }
     function addScoreToStudent(name, points) {
         if (points === 0) return;
@@ -1297,9 +1587,9 @@
             totalRounds = parseInt(roundCountSelect.value) || 15;
             groupDifficulty = groupDifficultySelect.value || 'muladdsub';
             currentRound = 0;
-            roundDisplay.innerText = `第 0 / ${totalRounds} 轮`;
+            roundDisplay.innerText = `共 ${totalRounds} 题`;
             roundIndicator.innerText = "等待准备";
-            feedbackDiv.innerHTML = `✨ 小组赛模式：4组各派1人，第1轮准备后开始，之后自动进行 ✨ 共 ${totalRounds} 轮，难度：${getDifficultyName(groupDifficulty)}`;
+            feedbackDiv.innerHTML = `✨ 四人赛：4组各派1人，准备好后开始 ✨ 共 ${totalRounds} 题，比完成总用时，难度：${getDifficultyName(groupDifficulty)}`;
         }
         setAllControlsDisabled(false);
     }
@@ -1307,12 +1597,19 @@
     function resetAllGameState() {
         if (timerInterval) clearInterval(timerInterval);
         if (countdownInterval) clearInterval(countdownInterval);
+        stopRaceClock();
         gameActive = false;
         countdownActive = false;
         isPaused = false;
         pauseBtn.classList.remove('paused');
         pauseBtn.innerText = "⏸️ 暂停";
         countdownOverlay.style.display = "none";
+        groupBank = null;
+        groupPos = [0, 0, 0, 0];
+        groupFinished = [false, false, false, false];
+        finishTime = [null, null, null, null];
+        raceElapsed = 0;
+        raceStatus = 'waiting';
         for (let i = 0; i < 4; i++) {
             if (penaltyTimers[i]) clearTimeout(penaltyTimers[i]);
             penaltyActive[i] = false;
@@ -1463,7 +1760,7 @@
     function showPasswordModal(targetName, type) {
         const modal = document.createElement('div');
         modal.className = 'password-modal';
-        modal.innerHTML = `<div class="password-content"><h3>🔐 ${type === 'delete' ? `删除 "${escapeHtml(targetName)}"` : (type === 'resetGroup' ? '重置小组积分' : '清除双人数据')}</h3><p>需要密码确认</p><input type="password" id="actionPassword" placeholder="请输入密码" autocomplete="off"><div style="display:flex;gap:8px;justify-content:center;margin-top:12px"><button class="uniform-btn confirm-btn" id="confirmActionBtn">确认</button><button class="uniform-btn cancel-btn" id="cancelActionBtn">取消</button></div></div>`;
+        modal.innerHTML = `<div class="password-content"><h3>🔐 ${type === 'delete' ? `删除 "${escapeHtml(targetName)}"` : (type === 'resetGroup' ? '重置比赛' : '清除双人数据')}</h3><p>需要密码确认</p><input type="password" id="actionPassword" placeholder="请输入密码" autocomplete="off"><div style="display:flex;gap:8px;justify-content:center;margin-top:12px"><button class="uniform-btn confirm-btn" id="confirmActionBtn">确认</button><button class="uniform-btn cancel-btn" id="cancelActionBtn">取消</button></div></div>`;
         document.body.appendChild(modal);
         const input = modal.querySelector('#actionPassword');
         const confirmBtn = modal.querySelector('#confirmActionBtn');
@@ -1480,16 +1777,34 @@
                     feedbackDiv.innerHTML = `✅ 已删除：${targetName}`;
                     saveAllData();
                 } else if (type === 'resetGroup') {
-                    groupTotalScore = [0, 0, 0, 0];
-                    saveGroupData();
                     updateRankingUI();
                     if (gameMode === 'group') {
+                        // 重置比赛与跑道，可重新开始
+                        gameActive = false;
+                        countdownActive = false;
+                        isPaused = false;
+                        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+                        if (countdownInterval) clearInterval(countdownInterval);
+                        stopRaceClock();
+                        raceStatus = 'waiting';
+                        groupBank = null;
+                        groupPos = [0, 0, 0, 0];
+                        groupFinished = [false, false, false, false];
+                        finishTime = [null, null, null, null];
+                        raceElapsed = 0;
+                        countdownOverlay.style.display = "none";
                         for (let i = 0; i < 4; i++) {
-                            const totalEl = document.getElementById(`totalScore${i}`);
-                            if (totalEl) totalEl.innerText = ` (总:0分)`;
+                            penaltyActive[i] = false;
+                            answerLock[i] = false;
+                            const card = document.getElementById(`playerCard${i}`);
+                            if (card) card.classList.remove('penalty-active', 'disabled-click', 'paused-card');
+                            questionAreaHide(i);
                         }
+                        updateRaceUI();
+                        resetReadyState();
+                        setAllControlsDisabled(false);
                     }
-                    feedbackDiv.innerHTML = "🔄 小组积分已重置";
+                    feedbackDiv.innerHTML = "🔄 比赛已重置，可重新开始";
                 } else {
                     allStudents = [];
                     localStorage.removeItem(STORAGE_STUDENTS);
@@ -1532,10 +1847,10 @@
     });
 
     roundCountSelect.addEventListener('change', () => {
-        if (gameActive) { feedbackDiv.innerHTML = "比赛中不能修改轮数"; roundCountSelect.value = totalRounds; return; }
+        if (gameActive) { feedbackDiv.innerHTML = "比赛中不能修改题数"; roundCountSelect.value = totalRounds; return; }
         totalRounds = parseInt(roundCountSelect.value);
         currentRound = 0;
-        roundDisplay.innerText = `第 0 / ${totalRounds} 轮`;
+        roundDisplay.innerText = `共 ${totalRounds} 题`;
         roundIndicator.innerText = "等待准备";
     });
 
@@ -1601,7 +1916,7 @@
         loadAllData();
         totalRounds = parseInt(roundCountSelect.value) || 15;
         groupDifficulty = groupDifficultySelect.value || 'multiply';
-        switchMode('double');
+        switchMode('group');
     }
     init();
 </script>
